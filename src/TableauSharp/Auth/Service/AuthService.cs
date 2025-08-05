@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using TableauSharp.Common.Helper;
 using TableauSharp.Common.Models;
 
 namespace TableauSharp.Auth.Service;
@@ -9,10 +10,12 @@ public class AuthService : IAuthService
 {
     private readonly HttpClient _httpClient;
     private readonly TableauAuthOptions _options;
+    private readonly ITableauTokenProvider _tokenProvider;
 
-    public AuthService(HttpClient httpClient, IOptions<TableauAuthOptions> options)
+    public AuthService(HttpClient httpClient, IOptions<TableauAuthOptions> options, ITableauTokenProvider tokenProvider)
     {
         _httpClient = httpClient;
+        _tokenProvider = tokenProvider;
         _options = options.Value;
 
         _httpClient.BaseAddress = new Uri($"{_options.ServerUrl}/api/3.20/");
@@ -35,7 +38,7 @@ public class AuthService : IAuthService
 
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
-
+        _tokenProvider.SetToken(doc.RootElement.GetProperty("credentials").GetProperty("token").GetString()!);
         return new AuthToken
         {
             Token = doc.RootElement.GetProperty("credentials").GetProperty("token").GetString()!,
