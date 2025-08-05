@@ -54,6 +54,7 @@ public class ViewService : IViewService
                     ? lastViewed.GetDateTime()
                     : default
             });
+            
         }
 
         return views;
