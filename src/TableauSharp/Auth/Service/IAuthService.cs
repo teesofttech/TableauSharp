@@ -7,4 +7,6 @@ public interface IAuthService
     Task<AuthToken> SignInWithPATAsync();
     Task<AuthToken> SignInWithUserCredentialsAsync();
     Task SignOutAsync(string token);
+    Task<AuthToken> SignInWithJWTAsync(string username, CancellationToken cancellationToken);
+
 }

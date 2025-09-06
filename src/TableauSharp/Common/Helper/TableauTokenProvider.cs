@@ -1,6 +1,6 @@
 namespace TableauSharp.Common.Helper;
 
-public class TableauTokenProvider: ITableauTokenProvider
+public class TableauTokenProvider : ITableauTokenProvider
 {
     private string _token;
 
