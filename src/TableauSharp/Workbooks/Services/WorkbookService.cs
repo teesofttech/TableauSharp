@@ -58,7 +58,7 @@ public class WorkbookService : IWorkbookService
 
     public async Task<TableauWorkbook> GetByIdAsync(string workbookId)
     {
-        using var client = CreateClient(_token); // CreateClient() from earlier example
+        using var client = CreateClient(_token);
 
         var response = await client.GetAsync($"workbooks/{workbookId}");
         response.EnsureSuccessStatusCode();
