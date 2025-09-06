@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using TableauSharp.Common.Helper;
 using TableauSharp.Common.Models;
+using TableauSharp.Settings;
 using TableauSharp.Workbooks.Models;
 
 namespace TableauSharp.Workbooks.Services;
@@ -11,21 +12,24 @@ public class ViewService : IViewService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly TableauAuthOptions _options;
     private readonly ITableauTokenProvider _tokenProvider;
+    private readonly TableauOptions _tableauOptions;
 
     public ViewService(
         IHttpClientFactory httpClientFactory,
         IOptions<TableauAuthOptions> options,
-        ITableauTokenProvider tokenProvider)
+        ITableauTokenProvider tokenProvider,
+        IOptions<TableauOptions> tableauOptions)
     {
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _tokenProvider = tokenProvider;
+        _tableauOptions = tableauOptions.Value;
     }
 
     private HttpClient CreateClient()
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
-        client.BaseAddress = new Uri($"{_options.ServerUrl}/api/3.20/sites/{_options.SiteContentUrl}/");
+        client.BaseAddress = new Uri($"{_tableauOptions.Url}/api/{_tableauOptions.Version}/sites/{_options.SiteContentUrl}/");
         client.DefaultRequestHeaders.Add("X-Tableau-Auth", _tokenProvider.GetToken());
         return client;
     }
@@ -54,7 +58,7 @@ public class ViewService : IViewService
                     ? lastViewed.GetDateTime()
                     : default
             });
-            
+
         }
 
         return views;

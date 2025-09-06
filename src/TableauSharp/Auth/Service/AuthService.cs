@@ -6,20 +6,13 @@ using TableauSharp.Common.Models;
 
 namespace TableauSharp.Auth.Service;
 
-public class AuthService : IAuthService
+public class AuthService(IHttpClientFactory httpClientFactory,
+    IOptions<TableauAuthOptions> options,
+    ITableauTokenProvider tokenProvider) : IAuthService
 {
-    private readonly HttpClient _httpClient;
-    private readonly TableauAuthOptions _options;
-    private readonly ITableauTokenProvider _tokenProvider;
-
-    public AuthService(HttpClient httpClient, IOptions<TableauAuthOptions> options, ITableauTokenProvider tokenProvider)
-    {
-        _httpClient = httpClient;
-        _tokenProvider = tokenProvider;
-        _options = options.Value;
-
-        _httpClient.BaseAddress = new Uri($"{_options.ServerUrl}/api/3.20/");
-    }
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+    private readonly TableauAuthOptions _options = options.Value;
+    private readonly ITableauTokenProvider _tokenProvider = tokenProvider;
 
     public async Task<AuthToken> SignInWithPATAsync()
     {
@@ -32,8 +25,8 @@ public class AuthService : IAuthService
                 site = new { contentUrl = _options.SiteContentUrl }
             }
         };
-
-        var response = await _httpClient.PostAsync("auth/signin", GetJsonContent(payload));
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        var response = await client.PostAsync("auth/signin", GetJsonContent(payload));
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
@@ -59,8 +52,8 @@ public class AuthService : IAuthService
                 site = new { contentUrl = _options.SiteContentUrl }
             }
         };
-
-        var response = await _httpClient.PostAsync("auth/signin", GetJsonContent(payload));
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        var response = await client.PostAsync("auth/signin", GetJsonContent(payload));
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
@@ -79,8 +72,8 @@ public class AuthService : IAuthService
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "auth/signout");
         request.Headers.Add("X-Tableau-Auth", token);
-
-        var response = await _httpClient.SendAsync(request);
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
     }
 

@@ -1,6 +1,7 @@
-using System.Text.Json;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 using TableauSharp.Common.Models;
+using TableauSharp.Settings;
 using TableauSharp.Workbooks.Models;
 
 namespace TableauSharp.Workbooks.Services;
@@ -10,18 +11,21 @@ public class WorkbookService : IWorkbookService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly TableauAuthOptions _options;
     private readonly string _token;
+    private readonly TableauOptions _tableauOptions;
 
-    public WorkbookService(IHttpClientFactory httpClientFactory, IOptions<TableauAuthOptions> options)
+    public WorkbookService(IHttpClientFactory httpClientFactory, IOptions<TableauAuthOptions> options,
+        IOptions<TableauOptions> tableauOptions)
     {
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
+        _tableauOptions = tableauOptions.Value;
     }
 
     // Helper method to create client per request with proper headers
     private HttpClient CreateClient(string token)
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
-        client.BaseAddress = new Uri($"{_options.ServerUrl}/api/3.20/sites/{_options.SiteContentUrl}/");
+        client.BaseAddress = new Uri($"{_tableauOptions.Url}/api/{_tableauOptions.Version}/sites/{_options.SiteContentUrl}/");
         client.DefaultRequestHeaders.Add("X-Tableau-Auth", token);
         return client;
     }
