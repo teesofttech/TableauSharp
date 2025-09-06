@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using TableauSharp.Auth.Service;
 using TableauSharp.Common.Helper;
-using TableauSharp.Common.Models;
 using TableauSharp.Projects.Services;
 using TableauSharp.Settings;
 using TableauSharp.Users.Services;

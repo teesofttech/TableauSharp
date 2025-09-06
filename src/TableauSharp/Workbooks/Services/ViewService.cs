@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using TableauSharp.Common.Helper;
-using TableauSharp.Common.Models;
 using TableauSharp.Settings;
 using TableauSharp.Workbooks.Models;
 

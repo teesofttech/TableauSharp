@@ -1,4 +1,4 @@
-namespace TableauSharp.Common.Models;
+namespace TableauSharp.Settings;
 
 public class TableauAuthOptions
 {

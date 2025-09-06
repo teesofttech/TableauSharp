@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Options;
 using System.Text.Json;
-using TableauSharp.Common.Models;
 using TableauSharp.Settings;
 using TableauSharp.Workbooks.Models;
 
