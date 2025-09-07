@@ -2,6 +2,7 @@
 
 public class TableauOptions
 {
-    public string Url { get; set; } = string.Empty;
-    public string Version { get; set; } = "3.21"; // default fallback
+    public string Server { get; set; } = string.Empty;
+    public string Version { get; set; } = "3.23"; // default fallback
+    public string Site { get; set; }
 }

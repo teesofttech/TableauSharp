@@ -24,7 +24,7 @@ public class WorkbookService : IWorkbookService
     private HttpClient CreateClient(string token)
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
-        client.BaseAddress = new Uri($"{_tableauOptions.Url}/api/{_tableauOptions.Version}/sites/{_options.SiteContentUrl}/");
+        client.BaseAddress = new Uri($"{_tableauOptions.Server}/api/{_tableauOptions.Version}/sites/{_options.SiteContentUrl}/");
         client.DefaultRequestHeaders.Add("X-Tableau-Auth", token);
         return client;
     }

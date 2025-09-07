@@ -28,7 +28,7 @@ public class ViewService : IViewService
     private HttpClient CreateClient()
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
-        client.BaseAddress = new Uri($"{_tableauOptions.Url}/api/{_tableauOptions.Version}/sites/{_options.SiteContentUrl}/");
+        client.BaseAddress = new Uri($"{_tableauOptions.Server}/api/{_tableauOptions.Version}/sites/{_options.SiteContentUrl}/");
         client.DefaultRequestHeaders.Add("X-Tableau-Auth", _tokenProvider.GetToken());
         return client;
     }

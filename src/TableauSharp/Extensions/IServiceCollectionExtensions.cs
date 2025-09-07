@@ -14,13 +14,14 @@ public static class IServiceCollectionExtensions
 {
     public static IServiceCollection AddTableauSharp(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<TableauOptions>(configuration.GetSection("Tableau"));
-        services.Configure<TableauAuthOptions>(configuration.GetSection("TableauAuth"));
+        services.Configure<TableauOptions>(configuration.GetSection("TableauOptions"));
+        services.Configure<TableauAuthOptions>(configuration.GetSection("TableauAuthOptions"));
+         
 
         services.AddHttpClient("TableauClient", (sp, client) =>
         {
             var options = sp.GetRequiredService<IOptions<TableauOptions>>().Value;
-            client.BaseAddress = new Uri($"{options.Url}/api/{options.Version}/");
+            client.BaseAddress = new Uri($"{options.Server}/api/{options.Version}/");
         });
 
         services.AddSingleton<ITableauTokenProvider, TableauTokenProvider>();

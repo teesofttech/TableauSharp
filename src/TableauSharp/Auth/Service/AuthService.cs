@@ -95,7 +95,7 @@ public class AuthService(IHttpClientFactory httpClientFactory,
             credentials = new
             {
                 jwt = CreateJwtToken(username),
-                site = new { contentUrl = _options.SiteContentUrl }
+                site = new { contentUrl = _tableauOptions.Site}
             }
         };
         var client = _httpClientFactory.CreateClient("TableauClient");
@@ -139,8 +139,8 @@ public class AuthService(IHttpClientFactory httpClientFactory,
         return new TableauJWT
         {
             ExpiryMinutes = _options.Jwt_Expiry_Minutes,
-            Server = _tableauOptions.Url,
-            Site = _options.SiteContentUrl,
+            Server = _tableauOptions.Server,
+            Site = _tableauOptions.Site,
             Token = CreateJwt(username, scopes)
         };
     }

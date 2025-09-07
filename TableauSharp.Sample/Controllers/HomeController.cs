@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using TableauSharp.Auth.Service;
 using TableauSharp.Sample.Models;
 
 namespace TableauSharp.Sample.Controllers;
@@ -7,15 +8,17 @@ namespace TableauSharp.Sample.Controllers;
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
-
-    public HomeController(ILogger<HomeController> logger)
+    private readonly IAuthService _authService;
+    public HomeController(ILogger<HomeController> logger, IAuthService authService)
     {
         _logger = logger;
+        _authService = authService;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        return View();
+        var token = await _authService.SignInWithJWTAsync("tableau_admin", CancellationToken.None);
+        return View(token);
     }
 
     public IActionResult Privacy()
