@@ -3,6 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using TableauSharp.Auth.Service;
 using TableauSharp.Common.Helper;
+using TableauSharp.DataSources.Services;
+using TableauSharp.Embedding.Services;
+using TableauSharp.Permissions.Services;
 using TableauSharp.Projects.Services;
 using TableauSharp.Settings;
 using TableauSharp.Users.Services;
@@ -31,6 +34,9 @@ public static class IServiceCollectionExtensions
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IWorkbookService, WorkbookService>();
         services.AddScoped<IViewService, ViewService>();
+        services.AddScoped<IDataSourceService, DataSourceService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IEmbeddingService, EmbeddingService>();
 
         return services;
     }
