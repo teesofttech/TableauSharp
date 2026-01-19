@@ -176,6 +176,14 @@ public class PermissionService : IPermissionService
     private async Task DeletePermissionAsync(string endpoint, string granteeId, string granteeType, string capability)
     {
         using var client = CreateClient();
+        
+        // Validate granteeType
+        if (!granteeType.Equals("User", StringComparison.OrdinalIgnoreCase) && 
+            !granteeType.Equals("Group", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("GranteeType must be either 'User' or 'Group'", nameof(granteeType));
+        }
+        
         var granteeTypeParam = granteeType.ToLower() + "s"; // "users" or "groups"
         var url = $"{endpoint}/{granteeTypeParam}/{granteeId}/{capability}";
 
