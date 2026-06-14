@@ -1,0 +1,43 @@
+name: Module completion
+description: Track a TableauSharp module from API design through prerelease readiness.
+title: "module: Complete <module name> SDK surface"
+labels: ["enhancement"]
+body:
+  - type: input
+    id: module
+    attributes:
+      label: Module
+      description: The SDK module or service area this issue tracks.
+      placeholder: Workbooks and Views
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Public API, Tableau REST endpoints, models, and examples included in this module.
+      placeholder: |
+        - List workbooks
+        - Get workbook by ID
+        - Publish workbook
+    validations:
+      required: true
+  - type: checkboxes
+    id: completion-gate
+    attributes:
+      label: Completion gate
+      description: Complete these items before publishing a prerelease for this module.
+      options:
+        - label: Public API reviewed for naming, cancellation tokens, async behavior, and Tableau REST parity.
+        - label: Request and response models document required, optional, and nullable fields.
+        - label: Unit tests cover request construction, response parsing, auth headers, validation, and error paths.
+        - label: Integration tests exist for at least one happy-path Tableau call and are skipped unless credentials are configured.
+        - label: Examples project includes a runnable sample for the module.
+        - label: README or docs include minimal usage for the module.
+        - label: CI passes restore, build, test, and pack.
+        - label: Publish workflow dry run succeeds for the target prerelease version.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Known gaps, Tableau version assumptions, or release risks.

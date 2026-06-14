@@ -5,6 +5,12 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Module being validated, for example Workbooks and Views'
+        required: false
+        type: string
 
 jobs:
   build-and-test:
@@ -19,6 +25,10 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+
+      - name: Module gate context
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.module != '' }}
+        run: echo "Validating module gate for ${{ inputs.module }}"
 
       - name: Restore
         run: dotnet restore TableauSharp.sln
