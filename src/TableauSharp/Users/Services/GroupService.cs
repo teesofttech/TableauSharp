@@ -31,8 +31,8 @@ public class GroupService : IGroupService
         {
             groups.Add(new TableauGroup
             {
-                Id = g.GetProperty("id").GetString(),
-                Name = g.GetProperty("name").GetString()
+                Id = g.GetProperty("id").GetString() ?? string.Empty,
+                Name = g.GetProperty("name").GetString() ?? string.Empty
             });
         }
 
@@ -52,8 +52,8 @@ public class GroupService : IGroupService
 
         return new TableauGroup
         {
-            Id = g.GetProperty("id").GetString(),
-            Name = g.GetProperty("name").GetString()
+            Id = g.GetProperty("id").GetString() ?? string.Empty,
+            Name = g.GetProperty("name").GetString() ?? string.Empty
         };
     }
 
@@ -74,8 +74,8 @@ public class GroupService : IGroupService
 
         return new TableauGroup
         {
-            Id = g.GetProperty("id").GetString(),
-            Name = g.GetProperty("name").GetString()
+            Id = g.GetProperty("id").GetString() ?? string.Empty,
+            Name = g.GetProperty("name").GetString() ?? string.Empty
         };
     }
 

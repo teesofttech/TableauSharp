@@ -5,17 +5,17 @@ namespace TableauSharp.Projects.Models;
 public class TableauProject
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     [JsonPropertyName("description")]
-    public string Description { get; set; }
+    public string? Description { get; set; }
 
     [JsonPropertyName("parentProjectId")]
-    public string ParentProjectId { get; set; }
+    public string? ParentProjectId { get; set; }
 
     [JsonPropertyName("ownerId")]
-    public string OwnerId { get; set; }
+    public string? OwnerId { get; set; }
 }

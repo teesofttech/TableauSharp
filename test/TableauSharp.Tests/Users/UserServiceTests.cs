@@ -38,6 +38,21 @@ public class UserServiceTests
     }
 
     [Test]
+    public async Task GetAllAsync_WhenEmailIsMissing_ReturnsNullEmail()
+    {
+        _context.MockHttp.When(HttpMethod.Get, $"{_context.SiteBase}users")
+            .Respond("application/json", UserWithoutEmailJson);
+
+        var result = (await _service.GetAllAsync()).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Id, Is.EqualTo("user-002"));
+            Assert.That(result.Email, Is.Null);
+        });
+    }
+
+    [Test]
     public async Task UpdateAsync_UsesSignedInSiteIdAndAuthHeader()
     {
         _context.MockHttp.When(HttpMethod.Put, $"{_context.SiteBase}users/user-001")
@@ -70,6 +85,18 @@ public class UserServiceTests
             "email": "alice@example.com",
             "siteRole": "Viewer"
           }
+        }
+        """;
+
+    private static string UserWithoutEmailJson => """
+        {
+          "users": [
+            {
+              "id": "user-002",
+              "name": "bob",
+              "siteRole": "Viewer"
+            }
+          ]
         }
         """;
 }

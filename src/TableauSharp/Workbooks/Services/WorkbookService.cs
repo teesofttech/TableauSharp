@@ -32,9 +32,9 @@ public class WorkbookService : IWorkbookService
         {
             workbooks.Add(new TableauWorkbook
             {
-                Id = w.GetProperty("id").GetString(),
-                Name = w.GetProperty("name").GetString(),
-                ProjectId = w.GetProperty("project").GetProperty("id").GetString(),
+                Id = w.GetProperty("id").GetString() ?? string.Empty,
+                Name = w.GetProperty("name").GetString() ?? string.Empty,
+                ProjectId = w.GetProperty("project").GetProperty("id").GetString() ?? string.Empty,
                 OwnerId = w.GetProperty("owner").GetProperty("id").GetString(),
                 CreatedAt = w.GetProperty("createdAt").GetDateTime(),
                 UpdatedAt = w.GetProperty("updatedAt").GetDateTime()
@@ -58,9 +58,9 @@ public class WorkbookService : IWorkbookService
 
         return new TableauWorkbook
         {
-            Id = w.GetProperty("id").GetString(),
-            Name = w.GetProperty("name").GetString(),
-            ProjectId = w.GetProperty("project").GetProperty("id").GetString(),
+            Id = w.GetProperty("id").GetString() ?? string.Empty,
+            Name = w.GetProperty("name").GetString() ?? string.Empty,
+            ProjectId = w.GetProperty("project").GetProperty("id").GetString() ?? string.Empty,
             OwnerId = w.GetProperty("owner").GetProperty("id").GetString(),
             CreatedAt = w.GetProperty("createdAt").GetDateTime(),
             UpdatedAt = w.GetProperty("updatedAt").GetDateTime()
@@ -92,9 +92,9 @@ public class WorkbookService : IWorkbookService
 
         return new TableauWorkbook
         {
-            Id = w.GetProperty("id").GetString(),
-            Name = w.GetProperty("name").GetString(),
-            ProjectId = w.GetProperty("project").GetProperty("id").GetString(),
+            Id = w.GetProperty("id").GetString() ?? string.Empty,
+            Name = w.GetProperty("name").GetString() ?? string.Empty,
+            ProjectId = w.GetProperty("project").GetProperty("id").GetString() ?? string.Empty,
             OwnerId = w.GetProperty("owner").GetProperty("id").GetString(),
             CreatedAt = w.GetProperty("createdAt").GetDateTime(),
             UpdatedAt = w.GetProperty("updatedAt").GetDateTime()

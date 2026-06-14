@@ -5,16 +5,16 @@ namespace TableauSharp.Workbooks.Models;
 public class TableauWorkbook
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     [JsonPropertyName("projectId")]
-    public string ProjectId { get; set; }
+    public string ProjectId { get; set; } = string.Empty;
 
     [JsonPropertyName("ownerId")]
-    public string OwnerId { get; set; }
+    public string? OwnerId { get; set; }
 
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }

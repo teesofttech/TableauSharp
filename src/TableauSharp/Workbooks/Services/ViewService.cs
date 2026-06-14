@@ -33,14 +33,14 @@ public class ViewService : IViewService
         {
             views.Add(new TableauView
             {
-                Id = v.GetProperty("id").GetString(),
-                Name = v.GetProperty("name").GetString(),
-                ContentUrl = v.GetProperty("contentUrl").GetString(),
+                Id = v.GetProperty("id").GetString() ?? string.Empty,
+                Name = v.GetProperty("name").GetString() ?? string.Empty,
+                ContentUrl = v.GetProperty("contentUrl").GetString() ?? string.Empty,
                 WorkbookId = workbookId,
                 TotalViews = v.GetProperty("totalViews").GetInt32(),
                 LastViewedAt = v.TryGetProperty("lastViewedAt", out var lastViewed)
                     ? lastViewed.GetDateTime()
-                    : default
+                    : null
             });
 
         }

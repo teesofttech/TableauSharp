@@ -38,6 +38,22 @@ public class ProjectServiceTests
     }
 
     [Test]
+    public async Task GetAllAsync_WhenOptionalFieldsAreMissing_ReturnsNullOptionalValues()
+    {
+        _context.MockHttp.When(HttpMethod.Get, $"{_context.SiteBase}projects")
+            .Respond("application/json", ProjectWithoutOptionalFieldsJson);
+
+        var result = (await _service.GetAllAsync()).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Id, Is.EqualTo("proj-002"));
+            Assert.That(result.Description, Is.Null);
+            Assert.That(result.ParentProjectId, Is.Null);
+        });
+    }
+
+    [Test]
     public async Task UpdateAsync_UsesSignedInSiteIdAndAuthHeader()
     {
         _context.MockHttp.When(HttpMethod.Put, $"{_context.SiteBase}projects/proj-001")
@@ -74,6 +90,18 @@ public class ProjectServiceTests
             "description": "Updated",
             "owner": { "id": "user-001" }
           }
+        }
+        """;
+
+    private static string ProjectWithoutOptionalFieldsJson => """
+        {
+          "projects": [
+            {
+              "id": "proj-002",
+              "name": "No optional fields",
+              "owner": { "id": "user-001" }
+            }
+          ]
         }
         """;
 }

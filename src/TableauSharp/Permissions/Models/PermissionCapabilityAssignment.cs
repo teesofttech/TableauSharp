@@ -9,5 +9,5 @@ public class PermissionCapabilityAssignment
     public PermissionCapability Capability { get; set; }
 
     [JsonPropertyName("mode")]
-    public string Mode { get; set; } // "Allow" or "Deny"
+    public string Mode { get; set; } = string.Empty; // "Allow" or "Deny"
 }

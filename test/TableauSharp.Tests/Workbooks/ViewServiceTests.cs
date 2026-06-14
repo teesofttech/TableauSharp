@@ -106,6 +106,21 @@ public class ViewServiceTests
     }
 
     [Test]
+    public async Task GetViewsByWorkbookIdAsync_WhenLastViewedAtIsMissing_ReturnsNullLastViewedAt()
+    {
+        _mockHttp.When(HttpMethod.Get, $"{SiteBase}workbooks/wb-001/views")
+            .Respond("application/json", ViewWithoutLastViewedAtJson);
+
+        var result = (await _service.GetViewsByWorkbookIdAsync("wb-001")).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Id, Is.EqualTo("view-002"));
+            Assert.That(result.LastViewedAt, Is.Null);
+        });
+    }
+
+    [Test]
     public void GetViewsByWorkbookIdAsync_WhenCancellationRequested_ThrowsTaskCanceledException()
     {
         _mockHttp.When(HttpMethod.Get, $"{SiteBase}workbooks/wb-001/views")
@@ -126,6 +141,19 @@ public class ViewServiceTests
               "contentUrl": "sales-view",
               "totalViews": 42,
               "lastViewedAt": "2024-06-01T08:30:00Z"
+            }
+          ]
+        }
+        """;
+
+    private static string ViewWithoutLastViewedAtJson => """
+        {
+          "views": [
+            {
+              "id": "view-002",
+              "name": "Inventory View",
+              "contentUrl": "inventory-view",
+              "totalViews": 0
             }
           ]
         }

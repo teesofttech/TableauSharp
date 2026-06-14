@@ -31,9 +31,9 @@ public class ProjectService : IProjectService
         {
             projects.Add(new TableauProject
             {
-                Id = p.GetProperty("id").GetString(),
-                Name = p.GetProperty("name").GetString(),
-                Description = p.GetProperty("description").GetString(),
+                Id = p.GetProperty("id").GetString() ?? string.Empty,
+                Name = p.GetProperty("name").GetString() ?? string.Empty,
+                Description = p.TryGetProperty("description", out var description) ? description.GetString() : null,
                 ParentProjectId = p.TryGetProperty("parentProjectId", out var parent) ? parent.GetString() : null,
                 OwnerId = p.GetProperty("owner").GetProperty("id").GetString()
             });
@@ -55,9 +55,9 @@ public class ProjectService : IProjectService
 
         return new TableauProject
         {
-            Id = p.GetProperty("id").GetString(),
-            Name = p.GetProperty("name").GetString(),
-            Description = p.GetProperty("description").GetString(),
+            Id = p.GetProperty("id").GetString() ?? string.Empty,
+            Name = p.GetProperty("name").GetString() ?? string.Empty,
+            Description = p.TryGetProperty("description", out var description) ? description.GetString() : null,
             ParentProjectId = p.TryGetProperty("parentProjectId", out var parent) ? parent.GetString() : null,
             OwnerId = p.GetProperty("owner").GetProperty("id").GetString()
         };
@@ -80,9 +80,9 @@ public class ProjectService : IProjectService
 
         return new TableauProject
         {
-            Id = p.GetProperty("id").GetString(),
-            Name = p.GetProperty("name").GetString(),
-            Description = p.GetProperty("description").GetString(),
+            Id = p.GetProperty("id").GetString() ?? string.Empty,
+            Name = p.GetProperty("name").GetString() ?? string.Empty,
+            Description = p.TryGetProperty("description", out var description) ? description.GetString() : null,
             ParentProjectId = p.TryGetProperty("parentProjectId", out var parent) ? parent.GetString() : null,
             OwnerId = p.GetProperty("owner").GetProperty("id").GetString()
         };
@@ -105,9 +105,9 @@ public class ProjectService : IProjectService
 
         return new TableauProject
         {
-            Id = p.GetProperty("id").GetString(),
-            Name = p.GetProperty("name").GetString(),
-            Description = p.GetProperty("description").GetString(),
+            Id = p.GetProperty("id").GetString() ?? string.Empty,
+            Name = p.GetProperty("name").GetString() ?? string.Empty,
+            Description = p.TryGetProperty("description", out var description) ? description.GetString() : null,
             ParentProjectId = p.TryGetProperty("parentProjectId", out var parent) ? parent.GetString() : null,
             OwnerId = p.GetProperty("owner").GetProperty("id").GetString()
         };

@@ -40,9 +40,13 @@ public class EmbeddingService : IEmbeddingService
 
         var form = new Dictionary<string, string>
         {
-            { "username", request.Username },
-            { "target_site", request.TargetSite }
+            { "username", request.Username }
         };
+
+        if (!string.IsNullOrEmpty(request.TargetSite))
+        {
+            form.Add("target_site", request.TargetSite);
+        }
 
         if (!string.IsNullOrEmpty(request.ClientIp))
         {
