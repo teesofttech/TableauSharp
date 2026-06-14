@@ -19,10 +19,10 @@
 
 ## Installation
 
-Coming soon to NuGet:
+Install prerelease packages from NuGet as modules reach preview quality:
 
 ```powershell
-dotnet add package TableauSharp
+dotnet add package TableauSharp --prerelease
 ```
 
 For now, clone the repository:
@@ -30,6 +30,8 @@ For now, clone the repository:
 ```bash
 git clone https://github.com/teesofttech/TableauSharp.git
 ```
+
+Maintainers can publish prerelease packages from GitHub Actions. See [Release Process](docs/release.md).
 
 ---
 

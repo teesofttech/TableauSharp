@@ -1,10 +1,20 @@
 name: Publish to NuGet
 
-# Triggered by a version tag: git tag v0.1.0 && git push --tags
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+*'   # v0.1.0, v1.0.0-beta, etc.
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version, for example 0.1.0-alpha.1'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build, test, pack, and upload artifacts without pushing to NuGet'
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   publish:
@@ -24,8 +34,20 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        # Strip the leading 'v' from the tag name (v0.1.0 → 0.1.0)
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid package version '$VERSION'. Use a SemVer value such as 0.1.0-alpha.1."
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Restore
         run: dotnet restore TableauSharp.sln
@@ -41,22 +63,36 @@ jobs:
           dotnet pack src/TableauSharp/TableauSharp.csproj
           --no-build
           -c Release
+          -p:ContinuousIntegrationBuild=true
           -p:PackageVersion=${{ steps.version.outputs.VERSION }}
           -o ./artifacts
 
       - name: Publish to NuGet
-        run: >
-          dotnet nuget push ./artifacts/*.nupkg
-          --api-key ${{ secrets.NUGET_API_KEY }}
-          --source https://api.nuget.org/v3/index.json
-          --skip-duplicate
+        if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        shell: bash
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "::error::NUGET_API_KEY repository secret is required to publish packages."
+            exit 1
+          fi
+
+          dotnet nuget push ./artifacts/*.nupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
 
       - name: Publish symbols
-        run: >
-          dotnet nuget push ./artifacts/*.snupkg
-          --api-key ${{ secrets.NUGET_API_KEY }}
-          --source https://api.nuget.org/v3/index.json
-          --skip-duplicate
+        if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        shell: bash
+        run: |
+          dotnet nuget push ./artifacts/*.snupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

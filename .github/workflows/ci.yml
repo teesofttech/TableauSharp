@@ -35,6 +35,15 @@ jobs:
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
 
+      - name: Pack
+        run: >
+          dotnet pack src/TableauSharp/TableauSharp.csproj
+          --no-build
+          -c Release
+          -p:ContinuousIntegrationBuild=true
+          -p:PackageVersion=0.0.0-ci.${{ github.run_number }}
+          -o ./artifacts
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -48,3 +57,9 @@ jobs:
         with:
           name: coverage
           path: '**/TestResults/**/coverage.cobertura.xml'
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./artifacts/
