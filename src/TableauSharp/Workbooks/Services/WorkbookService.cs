@@ -1,7 +1,5 @@
-using Microsoft.Extensions.Options;
 using System.Text.Json;
-using TableauSharp.Common.Helper;
-using TableauSharp.Settings;
+using TableauSharp.Common.Http;
 using TableauSharp.Workbooks.Models;
 
 namespace TableauSharp.Workbooks.Services;
@@ -9,37 +7,24 @@ namespace TableauSharp.Workbooks.Services;
 public class WorkbookService : IWorkbookService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly TableauAuthOptions _options;
-    private readonly ITableauTokenProvider _tokenProvider;
-    private readonly TableauOptions _tableauOptions;
+    private readonly ITableauRequestBuilder _requestBuilder;
 
     public WorkbookService(
         IHttpClientFactory httpClientFactory,
-        IOptions<TableauAuthOptions> options,
-        IOptions<TableauOptions> tableauOptions,
-        ITableauTokenProvider tokenProvider)
+        ITableauRequestBuilder requestBuilder)
     {
         _httpClientFactory = httpClientFactory;
-        _options = options.Value;
-        _tableauOptions = tableauOptions.Value;
-        _tokenProvider = tokenProvider;
+        _requestBuilder = requestBuilder;
     }
 
-    private HttpClient CreateClient()
+    public async Task<IEnumerable<TableauWorkbook>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
-        client.BaseAddress = new Uri($"{_tableauOptions.Server}/api/{_tableauOptions.Version}/sites/{_options.SiteContentUrl}/");
-        client.DefaultRequestHeaders.Add("X-Tableau-Auth", _tokenProvider.GetToken());
-        return client;
-    }
-
-    public async Task<IEnumerable<TableauWorkbook>> GetAllAsync()
-    {
-        using var client = CreateClient();
-        var response = await client.GetAsync("workbooks");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, "workbooks");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
 
         var workbooks = new List<TableauWorkbook>();
@@ -59,14 +44,15 @@ public class WorkbookService : IWorkbookService
         return workbooks;
     }
 
-    public async Task<TableauWorkbook> GetByIdAsync(string workbookId)
+    public async Task<TableauWorkbook> GetByIdAsync(string workbookId, CancellationToken cancellationToken = default)
     {
-        using var client = CreateClient();
+        var client = _httpClientFactory.CreateClient("TableauClient");
 
-        var response = await client.GetAsync($"workbooks/{workbookId}");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, $"workbooks/{workbookId}");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var w = doc.RootElement.GetProperty("workbook");
 
@@ -82,9 +68,9 @@ public class WorkbookService : IWorkbookService
     }
 
 
-    public async Task<TableauWorkbook> PublishAsync(WorkbookPublishRequest request)
+    public async Task<TableauWorkbook> PublishAsync(WorkbookPublishRequest request, CancellationToken cancellationToken = default)
     {
-        using var client = CreateClient();
+        var client = _httpClientFactory.CreateClient("TableauClient");
 
         using var form = new MultipartFormDataContent();
         form.Add(new StringContent(request.ProjectId), "projectId");
@@ -97,10 +83,12 @@ public class WorkbookService : IWorkbookService
         fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         form.Add(fileContent, "tableau_workbook", Path.GetFileName(request.FilePath));
 
-        var response = await client.PostAsync("workbooks", form);
+        using var httpRequest = _requestBuilder.CreateSiteRequest(HttpMethod.Post, "workbooks");
+        httpRequest.Content = form;
+        var response = await client.SendAsync(httpRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var w = doc.RootElement.GetProperty("workbook");
 
@@ -115,11 +103,12 @@ public class WorkbookService : IWorkbookService
         };
     }
 
-    public async Task DeleteAsync(string workbookId)
+    public async Task DeleteAsync(string workbookId, CancellationToken cancellationToken = default)
     {
-        using var client = CreateClient();
+        var client = _httpClientFactory.CreateClient("TableauClient");
 
-        var response = await client.DeleteAsync($"workbooks/{workbookId}");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Delete, $"workbooks/{workbookId}");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 

@@ -10,7 +10,7 @@ public class TableauAuthOptions
     public bool UsePAT { get; set; } = true;
     public string? SecretValue { get; set; }
     public string? SecretId { get; set; }
-    public int Jwt_Expiry_Minutes { get; set; }
-    public string Jwt_Audience { get; set; } = "tableau";
+    public int Jwt_Expiry_Minutes { get; set; } = 5;
+    public string Jwt_Audience { get; set; } = string.Empty;
     public string Scopes { get; set; } = "tableau:views:read tableau:workbooks:read";
 }

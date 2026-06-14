@@ -1,7 +1,5 @@
 using System.Text.Json;
-using Microsoft.Extensions.Options;
-using TableauSharp.Common.Helper;
-using TableauSharp.Settings;
+using TableauSharp.Common.Http;
 using TableauSharp.Workbooks.Models;
 
 namespace TableauSharp.Workbooks.Services;
@@ -9,38 +7,25 @@ namespace TableauSharp.Workbooks.Services;
 public class ViewService : IViewService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly TableauAuthOptions _options;
-    private readonly ITableauTokenProvider _tokenProvider;
-    private readonly TableauOptions _tableauOptions;
+    private readonly ITableauRequestBuilder _requestBuilder;
 
     public ViewService(
         IHttpClientFactory httpClientFactory,
-        IOptions<TableauAuthOptions> options,
-        ITableauTokenProvider tokenProvider,
-        IOptions<TableauOptions> tableauOptions)
+        ITableauRequestBuilder requestBuilder)
     {
         _httpClientFactory = httpClientFactory;
-        _options = options.Value;
-        _tokenProvider = tokenProvider;
-        _tableauOptions = tableauOptions.Value;
+        _requestBuilder = requestBuilder;
     }
 
-    private HttpClient CreateClient()
+    public async Task<IEnumerable<TableauView>> GetViewsByWorkbookIdAsync(string workbookId, CancellationToken cancellationToken = default)
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
-        client.BaseAddress = new Uri($"{_tableauOptions.Server}/api/{_tableauOptions.Version}/sites/{_options.SiteContentUrl}/");
-        client.DefaultRequestHeaders.Add("X-Tableau-Auth", _tokenProvider.GetToken());
-        return client;
-    }
 
-    public async Task<IEnumerable<TableauView>> GetViewsByWorkbookIdAsync(string workbookId)
-    {
-        using var client = CreateClient();
-
-        var response = await client.GetAsync($"workbooks/{workbookId}/views");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, $"workbooks/{workbookId}/views");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
 
         var views = new List<TableauView>();
@@ -63,14 +48,15 @@ public class ViewService : IViewService
         return views;
     }
 
-    public async Task<ExportResponse> ExportViewAsync(ExportRequest request)
+    public async Task<ExportResponse> ExportViewAsync(ExportRequest request, CancellationToken cancellationToken = default)
     {
-        using var client = CreateClient();
+        var client = _httpClientFactory.CreateClient("TableauClient");
 
-        var response = await client.GetAsync($"views/{request.ViewId}/{request.Format.ToLower()}");
+        using var httpRequest = _requestBuilder.CreateSiteRequest(HttpMethod.Get, $"views/{request.ViewId}/{request.Format.ToLower()}");
+        var response = await client.SendAsync(httpRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var bytes = await response.Content.ReadAsByteArrayAsync();
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
 
         return new ExportResponse

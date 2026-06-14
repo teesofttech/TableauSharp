@@ -39,8 +39,12 @@ Add your Tableau settings in `appsettings.json`:
 
 ```json
 {
-  "Tableau": {
-    "ServerUrl": "https://your-tableau-server",
+  "TableauOptions": {
+    "Server": "https://your-tableau-server",
+    "Version": "3.23",
+    "Site": "yoursite"
+  },
+  "TableauAuthOptions": {
     "SiteContentUrl": "yoursite",
     "PersonalAccessTokenName": "your-token-name",
     "PersonalAccessTokenSecret": "your-token-secret",
@@ -61,15 +65,26 @@ using TableauSharp.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Bind Tableau settings
-builder.Services.Configure<TableauAuthOptions>(
-    builder.Configuration.GetSection("Tableau"));
-
 // Register Tableau services
-builder.Services.AddTableauSharp();
+builder.Services.AddTableauSharp(builder.Configuration);
 
 var app = builder.Build();
 ```
+
+---
+
+## Authentication Lifecycle
+
+Call one of the sign-in methods before using site-scoped services:
+
+```csharp
+var authToken = await authService.SignInWithPATAsync();
+var workbooks = await workbookService.GetAllAsync();
+```
+
+Successful sign-in stores the Tableau auth token, site LUID, site content URL, user LUID, and expiration in the scoped Tableau session. Site-scoped REST requests use the signed-in site LUID returned by Tableau, not the friendly site content URL.
+
+The built-in session is scoped for a single logical caller. Server applications that serve multiple Tableau users should create an appropriate DI scope per caller/request or manage user-specific sessions explicitly.
 
 ---
 

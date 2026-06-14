@@ -3,6 +3,8 @@ using Microsoft.Extensions.Options;
 using Moq;
 using RichardSzalay.MockHttp;
 using TableauSharp.Common.Helper;
+using TableauSharp.Common.Http;
+using TableauSharp.Common.Models;
 using TableauSharp.Settings;
 using TableauSharp.Workbooks.Models;
 using TableauSharp.Workbooks.Services;
@@ -15,8 +17,9 @@ public class WorkbookServiceTests
     private const string Server = "https://tableau.example.com";
     private const string ApiVersion = "3.23";
     private const string SiteContentUrl = "mysite";
+    private const string SiteId = "site-luid-123";
     private const string AuthToken = "test-auth-token-abc";
-    private string SiteBase => $"{Server}/api/{ApiVersion}/sites/{SiteContentUrl}/";
+    private string SiteBase => $"{Server}/api/{ApiVersion}/sites/{SiteId}/";
 
     private MockHttpMessageHandler _mockHttp = null!;
     private Mock<IHttpClientFactory> _mockFactory = null!;
@@ -34,12 +37,19 @@ public class WorkbookServiceTests
         _mockFactory.Setup(f => f.CreateClient("TableauClient")).Returns(httpClient);
 
         _mockTokenProvider = new Mock<ITableauTokenProvider>(MockBehavior.Strict);
-        _mockTokenProvider.Setup(p => p.GetToken()).Returns(AuthToken);
+        _mockTokenProvider.Setup(p => p.GetTokenInfo()).Returns(new AuthToken
+        {
+            Token = AuthToken,
+            SiteId = SiteId,
+            SiteContentUrl = SiteContentUrl,
+            UserId = "user-luid-123",
+            Expiration = DateTime.UtcNow.AddHours(2)
+        });
 
-        var authOptions = Options.Create(new TableauAuthOptions { SiteContentUrl = SiteContentUrl });
         var tableauOptions = Options.Create(new TableauOptions { Server = Server, Version = ApiVersion });
+        var requestBuilder = new TableauRequestBuilder(tableauOptions, _mockTokenProvider.Object);
 
-        _service = new WorkbookService(_mockFactory.Object, authOptions, tableauOptions, _mockTokenProvider.Object);
+        _service = new WorkbookService(_mockFactory.Object, requestBuilder);
     }
 
     [TearDown]
@@ -84,20 +94,20 @@ public class WorkbookServiceTests
     }
 
     [Test]
-    public async Task GetAllAsync_CallsTokenProvider_ToGetToken()
+    public async Task GetAllAsync_CallsTokenProvider_ToGetSession()
     {
         _mockHttp.When(HttpMethod.Get, $"{SiteBase}workbooks")
             .Respond("application/json", WorkbookListJson);
 
         await _service.GetAllAsync();
 
-        _mockTokenProvider.Verify(p => p.GetToken(), Times.Once);
+        _mockTokenProvider.Verify(p => p.GetTokenInfo(), Times.Once);
     }
 
     [Test]
     public void GetAllAsync_WhenTokenProviderThrows_PropagatesException()
     {
-        _mockTokenProvider.Setup(p => p.GetToken())
+        _mockTokenProvider.Setup(p => p.GetTokenInfo())
             .Throws(new InvalidOperationException("No Tableau auth token set. Please sign in first."));
 
         var ex = Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetAllAsync());
@@ -111,6 +121,18 @@ public class WorkbookServiceTests
             .Respond(HttpStatusCode.Unauthorized);
 
         Assert.ThrowsAsync<HttpRequestException>(() => _service.GetAllAsync());
+    }
+
+    [Test]
+    public void GetAllAsync_WhenCancellationRequested_ThrowsTaskCanceledException()
+    {
+        _mockHttp.When(HttpMethod.Get, $"{SiteBase}workbooks")
+            .Respond("application/json", WorkbookListJson);
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Assert.ThrowsAsync<TaskCanceledException>(() => _service.GetAllAsync(cts.Token));
     }
 
     // --- GetByIdAsync ---
