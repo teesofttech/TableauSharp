@@ -1,24 +1,29 @@
 using System.Text;
 using System.Text.Json;
+using TableauSharp.Common.Http;
 using TableauSharp.Projects.Models;
 
 namespace TableauSharp.Projects.Services;
 
 public class ProjectService : IProjectService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ITableauRequestBuilder _requestBuilder;
 
-    public ProjectService(HttpClient httpClient)
+    public ProjectService(IHttpClientFactory httpClientFactory, ITableauRequestBuilder requestBuilder)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
+        _requestBuilder = requestBuilder;
     }
 
-    public async Task<IEnumerable<TableauProject>> GetAllAsync()
+    public async Task<IEnumerable<TableauProject>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync("projects");
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, "projects");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
 
         var projects = new List<TableauProject>();
@@ -37,12 +42,14 @@ public class ProjectService : IProjectService
         return projects;
     }
 
-    public async Task<TableauProject> GetByIdAsync(string projectId)
+    public async Task<TableauProject> GetByIdAsync(string projectId, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync($"projects/{projectId}");
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, $"projects/{projectId}");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var p = doc.RootElement.GetProperty("project");
 
@@ -56,15 +63,18 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<TableauProject> CreateAsync(ProjectCreateRequest request)
+    public async Task<TableauProject> CreateAsync(ProjectCreateRequest request, CancellationToken cancellationToken = default)
     {
         var payload = new { project = request };
         var jsonContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.PostAsync("projects", jsonContent);
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var httpRequest = _requestBuilder.CreateSiteRequest(HttpMethod.Post, "projects");
+        httpRequest.Content = jsonContent;
+        var response = await client.SendAsync(httpRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var p = doc.RootElement.GetProperty("project");
 
@@ -78,15 +88,18 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<TableauProject> UpdateAsync(string projectId, ProjectUpdateRequest request)
+    public async Task<TableauProject> UpdateAsync(string projectId, ProjectUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var payload = new { project = request };
         var jsonContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.PutAsync($"projects/{projectId}", jsonContent);
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var httpRequest = _requestBuilder.CreateSiteRequest(HttpMethod.Put, $"projects/{projectId}");
+        httpRequest.Content = jsonContent;
+        var response = await client.SendAsync(httpRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var p = doc.RootElement.GetProperty("project");
 
@@ -100,9 +113,11 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task DeleteAsync(string projectId)
+    public async Task DeleteAsync(string projectId, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.DeleteAsync($"projects/{projectId}");
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Delete, $"projects/{projectId}");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 }

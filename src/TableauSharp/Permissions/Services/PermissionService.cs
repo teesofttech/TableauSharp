@@ -1,61 +1,46 @@
-using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;
-using TableauSharp.Common.Helper;
+using TableauSharp.Common.Http;
 using TableauSharp.Permissions.Models;
-using TableauSharp.Settings;
 
 namespace TableauSharp.Permissions.Services;
 
 public class PermissionService : IPermissionService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ITableauTokenProvider _tokenProvider;
-    private readonly TableauAuthOptions _authOptions;
-    private readonly TableauOptions _tableauOptions;
+    private readonly ITableauRequestBuilder _requestBuilder;
 
     public PermissionService(
         IHttpClientFactory httpClientFactory,
-        ITableauTokenProvider tokenProvider,
-        IOptions<TableauAuthOptions> authOptions,
-        IOptions<TableauOptions> tableauOptions)
+        ITableauRequestBuilder requestBuilder)
     {
         _httpClientFactory = httpClientFactory;
-        _tokenProvider = tokenProvider;
-        _authOptions = authOptions.Value;
-        _tableauOptions = tableauOptions.Value;
+        _requestBuilder = requestBuilder;
     }
 
-    private HttpClient CreateClient()
+    public async Task<IEnumerable<TableauPermission>> GetWorkbookPermissionsAsync(string workbookId, CancellationToken cancellationToken = default)
+    {
+        return await GetPermissionsAsync($"workbooks/{workbookId}/permissions", cancellationToken);
+    }
+
+    public async Task<IEnumerable<TableauPermission>> GetProjectPermissionsAsync(string projectId, CancellationToken cancellationToken = default)
+    {
+        return await GetPermissionsAsync($"projects/{projectId}/permissions", cancellationToken);
+    }
+
+    public async Task<IEnumerable<TableauPermission>> GetDataSourcePermissionsAsync(string dataSourceId, CancellationToken cancellationToken = default)
+    {
+        return await GetPermissionsAsync($"datasources/{dataSourceId}/permissions", cancellationToken);
+    }
+
+    private async Task<IEnumerable<TableauPermission>> GetPermissionsAsync(string endpoint, CancellationToken cancellationToken)
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
-        client.BaseAddress = new Uri($"{_tableauOptions.Server}/api/{_tableauOptions.Version}/sites/{_authOptions.SiteContentUrl}/");
-        client.DefaultRequestHeaders.Add("X-Tableau-Auth", _tokenProvider.GetToken());
-        return client;
-    }
-
-    public async Task<IEnumerable<TableauPermission>> GetWorkbookPermissionsAsync(string workbookId)
-    {
-        return await GetPermissionsAsync($"workbooks/{workbookId}/permissions");
-    }
-
-    public async Task<IEnumerable<TableauPermission>> GetProjectPermissionsAsync(string projectId)
-    {
-        return await GetPermissionsAsync($"projects/{projectId}/permissions");
-    }
-
-    public async Task<IEnumerable<TableauPermission>> GetDataSourcePermissionsAsync(string dataSourceId)
-    {
-        return await GetPermissionsAsync($"datasources/{dataSourceId}/permissions");
-    }
-
-    private async Task<IEnumerable<TableauPermission>> GetPermissionsAsync(string endpoint)
-    {
-        using var client = CreateClient();
-        var response = await client.GetAsync(endpoint);
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, endpoint);
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
 
         var permissions = new List<TableauPermission>();
@@ -107,24 +92,24 @@ public class PermissionService : IPermissionService
         return permissions;
     }
 
-    public async Task AddWorkbookPermissionAsync(string workbookId, TableauPermission permission)
+    public async Task AddWorkbookPermissionAsync(string workbookId, TableauPermission permission, CancellationToken cancellationToken = default)
     {
-        await AddPermissionAsync($"workbooks/{workbookId}/permissions", permission);
+        await AddPermissionAsync($"workbooks/{workbookId}/permissions", permission, cancellationToken);
     }
 
-    public async Task AddProjectPermissionAsync(string projectId, TableauPermission permission)
+    public async Task AddProjectPermissionAsync(string projectId, TableauPermission permission, CancellationToken cancellationToken = default)
     {
-        await AddPermissionAsync($"projects/{projectId}/permissions", permission);
+        await AddPermissionAsync($"projects/{projectId}/permissions", permission, cancellationToken);
     }
 
-    public async Task AddDataSourcePermissionAsync(string dataSourceId, TableauPermission permission)
+    public async Task AddDataSourcePermissionAsync(string dataSourceId, TableauPermission permission, CancellationToken cancellationToken = default)
     {
-        await AddPermissionAsync($"datasources/{dataSourceId}/permissions", permission);
+        await AddPermissionAsync($"datasources/{dataSourceId}/permissions", permission, cancellationToken);
     }
 
-    private async Task AddPermissionAsync(string endpoint, TableauPermission permission)
+    private async Task AddPermissionAsync(string endpoint, TableauPermission permission, CancellationToken cancellationToken)
     {
-        using var client = CreateClient();
+        var client = _httpClientFactory.CreateClient("TableauClient");
 
         var payload = new
         {
@@ -154,28 +139,30 @@ public class PermissionService : IPermissionService
             Encoding.UTF8,
             "application/json");
 
-        var response = await client.PutAsync(endpoint, jsonContent);
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Put, endpoint);
+        request.Content = jsonContent;
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task DeleteWorkbookPermissionAsync(string workbookId, string granteeId, string granteeType, string capability)
+    public async Task DeleteWorkbookPermissionAsync(string workbookId, string granteeId, string granteeType, string capability, CancellationToken cancellationToken = default)
     {
-        await DeletePermissionAsync($"workbooks/{workbookId}/permissions", granteeId, granteeType, capability);
+        await DeletePermissionAsync($"workbooks/{workbookId}/permissions", granteeId, granteeType, capability, cancellationToken);
     }
 
-    public async Task DeleteProjectPermissionAsync(string projectId, string granteeId, string granteeType, string capability)
+    public async Task DeleteProjectPermissionAsync(string projectId, string granteeId, string granteeType, string capability, CancellationToken cancellationToken = default)
     {
-        await DeletePermissionAsync($"projects/{projectId}/permissions", granteeId, granteeType, capability);
+        await DeletePermissionAsync($"projects/{projectId}/permissions", granteeId, granteeType, capability, cancellationToken);
     }
 
-    public async Task DeleteDataSourcePermissionAsync(string dataSourceId, string granteeId, string granteeType, string capability)
+    public async Task DeleteDataSourcePermissionAsync(string dataSourceId, string granteeId, string granteeType, string capability, CancellationToken cancellationToken = default)
     {
-        await DeletePermissionAsync($"datasources/{dataSourceId}/permissions", granteeId, granteeType, capability);
+        await DeletePermissionAsync($"datasources/{dataSourceId}/permissions", granteeId, granteeType, capability, cancellationToken);
     }
 
-    private async Task DeletePermissionAsync(string endpoint, string granteeId, string granteeType, string capability)
+    private async Task DeletePermissionAsync(string endpoint, string granteeId, string granteeType, string capability, CancellationToken cancellationToken)
     {
-        using var client = CreateClient();
+        var client = _httpClientFactory.CreateClient("TableauClient");
         
         // Validate granteeType
         if (!granteeType.Equals("User", StringComparison.OrdinalIgnoreCase) && 
@@ -187,7 +174,8 @@ public class PermissionService : IPermissionService
         var granteeTypeParam = granteeType.ToLower() + "s"; // "users" or "groups"
         var url = $"{endpoint}/{granteeTypeParam}/{granteeId}/{capability}";
 
-        var response = await client.DeleteAsync(url);
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Delete, url);
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 }
