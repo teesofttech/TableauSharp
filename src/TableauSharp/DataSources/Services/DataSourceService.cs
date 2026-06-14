@@ -1,45 +1,30 @@
-using Microsoft.Extensions.Options;
 using System.Text.Json;
-using TableauSharp.Common.Helper;
+using TableauSharp.Common.Http;
 using TableauSharp.DataSources.Models;
-using TableauSharp.Settings;
 
 namespace TableauSharp.DataSources.Services;
 
 public class DataSourceService : IDataSourceService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ITableauTokenProvider _tokenProvider;
-    private readonly TableauAuthOptions _authOptions;
-    private readonly TableauOptions _tableauOptions;
+    private readonly ITableauRequestBuilder _requestBuilder;
 
     public DataSourceService(
         IHttpClientFactory httpClientFactory,
-        ITableauTokenProvider tokenProvider,
-        IOptions<TableauAuthOptions> authOptions,
-        IOptions<TableauOptions> tableauOptions)
+        ITableauRequestBuilder requestBuilder)
     {
         _httpClientFactory = httpClientFactory;
-        _tokenProvider = tokenProvider;
-        _authOptions = authOptions.Value;
-        _tableauOptions = tableauOptions.Value;
+        _requestBuilder = requestBuilder;
     }
 
-    private HttpClient CreateClient()
+    public async Task<IEnumerable<TableauDataSource>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
-        client.BaseAddress = new Uri($"{_tableauOptions.Server}/api/{_tableauOptions.Version}/sites/{_authOptions.SiteContentUrl}/");
-        client.DefaultRequestHeaders.Add("X-Tableau-Auth", _tokenProvider.GetToken());
-        return client;
-    }
-
-    public async Task<IEnumerable<TableauDataSource>> GetAllAsync()
-    {
-        using var client = CreateClient();
-        var response = await client.GetAsync("datasources");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, "datasources");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
 
         var dataSources = new List<TableauDataSource>();
@@ -65,13 +50,14 @@ public class DataSourceService : IDataSourceService
         return dataSources;
     }
 
-    public async Task<TableauDataSource> GetByIdAsync(string dataSourceId)
+    public async Task<TableauDataSource> GetByIdAsync(string dataSourceId, CancellationToken cancellationToken = default)
     {
-        using var client = CreateClient();
-        var response = await client.GetAsync($"datasources/{dataSourceId}");
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, $"datasources/{dataSourceId}");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var ds = doc.RootElement.GetProperty("datasource");
 
@@ -89,30 +75,25 @@ public class DataSourceService : IDataSourceService
         };
     }
 
-    public async Task<TableauDataSource> PublishAsync(DataSourcePublishRequest request)
+    public async Task<TableauDataSource> PublishAsync(DataSourcePublishRequest request, CancellationToken cancellationToken = default)
     {
-        using var client = CreateClient();
-        using var form = new MultipartFormDataContent();
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        ArgumentNullException.ThrowIfNull(request);
 
-        form.Add(new StringContent(request.ProjectId), "projectId");
-        form.Add(new StringContent(request.Name), "datasourceName");
-        form.Add(new StringContent(request.Overwrite.ToString().ToLower()), "overwrite");
-
-        if (!string.IsNullOrEmpty(request.Description))
-        {
-            form.Add(new StringContent(request.Description), "description");
-        }
-
-        // Attach data source file
-        var fileBytes = await File.ReadAllBytesAsync(request.FilePath);
-        var fileContent = new ByteArrayContent(fileBytes);
-        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
-        form.Add(fileContent, "tableau_datasource", Path.GetFileName(request.FilePath));
-
-        var response = await client.PostAsync("datasources", form);
+        using var content = await TableauPublishContentBuilder.CreateDataSourceContentAsync(
+            request.Name,
+            request.ProjectId,
+            request.Description,
+            request.FilePath,
+            cancellationToken);
+        using var httpRequest = _requestBuilder.CreateSiteRequest(
+            HttpMethod.Post,
+            $"datasources?overwrite={request.Overwrite.ToString().ToLowerInvariant()}");
+        httpRequest.Content = content;
+        var response = await client.SendAsync(httpRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var ds = doc.RootElement.GetProperty("datasource");
 
@@ -130,17 +111,19 @@ public class DataSourceService : IDataSourceService
         };
     }
 
-    public async Task DeleteAsync(string dataSourceId)
+    public async Task DeleteAsync(string dataSourceId, CancellationToken cancellationToken = default)
     {
-        using var client = CreateClient();
-        var response = await client.DeleteAsync($"datasources/{dataSourceId}");
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Delete, $"datasources/{dataSourceId}");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task RefreshAsync(string dataSourceId)
+    public async Task RefreshAsync(string dataSourceId, CancellationToken cancellationToken = default)
     {
-        using var client = CreateClient();
-        var response = await client.PostAsync($"datasources/{dataSourceId}/refresh", null);
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Post, $"datasources/{dataSourceId}/refresh");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 }

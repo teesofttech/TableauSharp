@@ -72,19 +72,17 @@ public class WorkbookService : IWorkbookService
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
 
-        using var form = new MultipartFormDataContent();
-        form.Add(new StringContent(request.ProjectId), "projectId");
-        form.Add(new StringContent(request.Name), "workbookName");
-        form.Add(new StringContent(request.Overwrite.ToString().ToLower()), "overwrite");
+        ArgumentNullException.ThrowIfNull(request);
 
-        // Attach workbook file
-        var fileBytes = await System.IO.File.ReadAllBytesAsync(request.FilePath);
-        var fileContent = new ByteArrayContent(fileBytes);
-        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
-        form.Add(fileContent, "tableau_workbook", Path.GetFileName(request.FilePath));
-
-        using var httpRequest = _requestBuilder.CreateSiteRequest(HttpMethod.Post, "workbooks");
-        httpRequest.Content = form;
+        using var content = await TableauPublishContentBuilder.CreateWorkbookContentAsync(
+            request.Name,
+            request.ProjectId,
+            request.FilePath,
+            cancellationToken);
+        using var httpRequest = _requestBuilder.CreateSiteRequest(
+            HttpMethod.Post,
+            $"workbooks?overwrite={request.Overwrite.ToString().ToLowerInvariant()}");
+        httpRequest.Content = content;
         var response = await client.SendAsync(httpRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
