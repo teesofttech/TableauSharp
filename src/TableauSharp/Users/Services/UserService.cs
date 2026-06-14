@@ -31,10 +31,10 @@ public class UserService : IUserService
         {
             users.Add(new TableauUser
             {
-                Id = u.GetProperty("id").GetString(),
-                Name = u.GetProperty("name").GetString(),
-                Email = u.GetProperty("email").GetString(),
-                SiteRole = u.GetProperty("siteRole").GetString()
+                Id = u.GetProperty("id").GetString() ?? string.Empty,
+                Name = u.GetProperty("name").GetString() ?? string.Empty,
+                Email = u.TryGetProperty("email", out var email) ? email.GetString() : null,
+                SiteRole = u.GetProperty("siteRole").GetString() ?? string.Empty
             });
         }
 
@@ -54,10 +54,10 @@ public class UserService : IUserService
 
         return new TableauUser
         {
-            Id = u.GetProperty("id").GetString(),
-            Name = u.GetProperty("name").GetString(),
-            Email = u.GetProperty("email").GetString(),
-            SiteRole = u.GetProperty("siteRole").GetString()
+            Id = u.GetProperty("id").GetString() ?? string.Empty,
+            Name = u.GetProperty("name").GetString() ?? string.Empty,
+            Email = u.TryGetProperty("email", out var email) ? email.GetString() : null,
+            SiteRole = u.GetProperty("siteRole").GetString() ?? string.Empty
         };
     }
 
@@ -78,10 +78,10 @@ public class UserService : IUserService
 
         return new TableauUser
         {
-            Id = u.GetProperty("id").GetString(),
-            Name = u.GetProperty("name").GetString(),
-            Email = u.GetProperty("email").GetString(),
-            SiteRole = u.GetProperty("siteRole").GetString()
+            Id = u.GetProperty("id").GetString() ?? string.Empty,
+            Name = u.GetProperty("name").GetString() ?? string.Empty,
+            Email = u.TryGetProperty("email", out var email) ? email.GetString() : null,
+            SiteRole = u.GetProperty("siteRole").GetString() ?? string.Empty
         };
     }
 
@@ -102,10 +102,10 @@ public class UserService : IUserService
 
         return new TableauUser
         {
-            Id = u.GetProperty("id").GetString(),
-            Name = u.GetProperty("name").GetString(),
-            Email = u.GetProperty("email").GetString(),
-            SiteRole = u.GetProperty("siteRole").GetString()
+            Id = u.GetProperty("id").GetString() ?? string.Empty,
+            Name = u.GetProperty("name").GetString() ?? string.Empty,
+            Email = u.TryGetProperty("email", out var email) ? email.GetString() : null,
+            SiteRole = u.GetProperty("siteRole").GetString() ?? string.Empty
         };
     }
 
