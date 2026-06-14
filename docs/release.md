@@ -34,6 +34,7 @@ Run **Publish to NuGet** manually with:
 - `dry_run`: `false`
 
 The workflow fails before publishing if `NUGET_API_KEY` is missing.
+The publish command uploads the `.nupkg` package and the matching `.snupkg` symbols package from the artifacts directory.
 
 ## Publish From A Tag
 
