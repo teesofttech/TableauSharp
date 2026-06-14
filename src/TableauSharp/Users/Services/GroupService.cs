@@ -1,24 +1,29 @@
 using System.Text;
 using System.Text.Json;
+using TableauSharp.Common.Http;
 using TableauSharp.Users.Models;
 
 namespace TableauSharp.Users.Services;
 
 public class GroupService : IGroupService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ITableauRequestBuilder _requestBuilder;
 
-    public GroupService(HttpClient httpClient)
+    public GroupService(IHttpClientFactory httpClientFactory, ITableauRequestBuilder requestBuilder)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
+        _requestBuilder = requestBuilder;
     }
 
-    public async Task<IEnumerable<TableauGroup>> GetAllAsync()
+    public async Task<IEnumerable<TableauGroup>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync("groups");
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, "groups");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
 
         var groups = new List<TableauGroup>();
@@ -34,12 +39,14 @@ public class GroupService : IGroupService
         return groups;
     }
 
-    public async Task<TableauGroup> GetByIdAsync(string groupId)
+    public async Task<TableauGroup> GetByIdAsync(string groupId, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync($"groups/{groupId}");
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Get, $"groups/{groupId}");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var g = doc.RootElement.GetProperty("group");
 
@@ -50,15 +57,18 @@ public class GroupService : IGroupService
         };
     }
 
-    public async Task<TableauGroup> CreateAsync(GroupCreateRequest request)
+    public async Task<TableauGroup> CreateAsync(GroupCreateRequest request, CancellationToken cancellationToken = default)
     {
         var payload = new { group = request };
         var jsonContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.PostAsync("groups", jsonContent);
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var httpRequest = _requestBuilder.CreateSiteRequest(HttpMethod.Post, "groups");
+        httpRequest.Content = jsonContent;
+        var response = await client.SendAsync(httpRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var g = doc.RootElement.GetProperty("group");
 
@@ -69,24 +79,31 @@ public class GroupService : IGroupService
         };
     }
 
-    public async Task AddUserToGroupAsync(string groupId, string userId)
+    public async Task AddUserToGroupAsync(string groupId, string userId, CancellationToken cancellationToken = default)
     {
         var payload = new { user = new { id = userId } };
         var jsonContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.PostAsync($"groups/{groupId}/users", jsonContent);
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Post, $"groups/{groupId}/users");
+        request.Content = jsonContent;
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task RemoveUserFromGroupAsync(string groupId, string userId)
+    public async Task RemoveUserFromGroupAsync(string groupId, string userId, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.DeleteAsync($"groups/{groupId}/users/{userId}");
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Delete, $"groups/{groupId}/users/{userId}");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task DeleteAsync(string groupId)
+    public async Task DeleteAsync(string groupId, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.DeleteAsync($"groups/{groupId}");
+        var client = _httpClientFactory.CreateClient("TableauClient");
+        using var request = _requestBuilder.CreateSiteRequest(HttpMethod.Delete, $"groups/{groupId}");
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 }
