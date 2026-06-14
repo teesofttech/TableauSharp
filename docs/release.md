@@ -6,6 +6,7 @@ TableauSharp publishes prerelease NuGet packages from GitHub Actions.
 
 - `NUGET_API_KEY` repository secret with permission to push `TableauSharp`.
 - Passing CI on `master`.
+- Completed [Module Completion Gate](module-completion.md) for the module being released.
 - A prerelease version, for example `0.1.0-alpha.1`.
 
 ## Validate Locally

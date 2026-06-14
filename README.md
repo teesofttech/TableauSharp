@@ -31,7 +31,7 @@ For now, clone the repository:
 git clone https://github.com/teesofttech/TableauSharp.git
 ```
 
-Maintainers can publish prerelease packages from GitHub Actions. See [Release Process](docs/release.md).
+Maintainers can publish prerelease packages from GitHub Actions after the [Module Completion Gate](docs/module-completion.md) is met. See [Release Process](docs/release.md).
 
 ---
 
