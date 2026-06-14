@@ -25,6 +25,7 @@ public class WorkbookServiceTests
     private Mock<IHttpClientFactory> _mockFactory = null!;
     private Mock<ITableauTokenProvider> _mockTokenProvider = null!;
     private WorkbookService _service = null!;
+    private readonly List<string> _tempFiles = [];
 
     [SetUp]
     public void SetUp()
@@ -53,7 +54,15 @@ public class WorkbookServiceTests
     }
 
     [TearDown]
-    public void TearDown() => _mockHttp.Dispose();
+    public void TearDown()
+    {
+        _mockHttp.Dispose();
+        foreach (var file in _tempFiles)
+        {
+            File.Delete(file);
+        }
+        _tempFiles.Clear();
+    }
 
     // --- GetAllAsync ---
 
@@ -178,6 +187,75 @@ public class WorkbookServiceTests
         Assert.ThrowsAsync<HttpRequestException>(() => _service.GetByIdAsync("missing"));
     }
 
+    // --- PublishAsync ---
+
+    [Test]
+    public async Task PublishAsync_SendsTableauMultipartMixedRequest()
+    {
+        var filePath = CreateTempFile("workbook.twbx", "workbook-content");
+        string? contentType = null;
+        string? requestBody = null;
+
+        _mockHttp.When(HttpMethod.Post, $"{SiteBase}workbooks?overwrite=true")
+            .With(req =>
+            {
+                contentType = req.Content!.Headers.ContentType?.MediaType;
+                requestBody = req.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                return true;
+            })
+            .Respond("application/json", SingleWorkbookJson("wb-001", "Published Workbook"));
+
+        var result = await _service.PublishAsync(new WorkbookPublishRequest
+        {
+            Name = "Published & Workbook",
+            ProjectId = "proj-1",
+            FilePath = filePath,
+            Overwrite = true
+        });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Id, Is.EqualTo("wb-001"));
+            Assert.That(contentType, Is.EqualTo("multipart/mixed"));
+            Assert.That(requestBody, Does.Contain("request_payload"));
+            Assert.That(requestBody, Does.Contain("tableau_workbook"));
+            Assert.That(requestBody, Does.Contain("filename=\"workbook.twbx\""));
+            Assert.That(requestBody, Does.Contain("<workbook name=\"Published &amp; Workbook\">"));
+            Assert.That(requestBody, Does.Contain("<project id=\"proj-1\""));
+            Assert.That(requestBody, Does.Not.Contain("workbookName"));
+        });
+    }
+
+    [Test]
+    public void PublishAsync_WhenWorkbookExtensionUnsupported_ThrowsNotSupportedException()
+    {
+        var filePath = CreateTempFile("workbook.txt", "not-a-workbook");
+
+        var ex = Assert.ThrowsAsync<NotSupportedException>(() => _service.PublishAsync(new WorkbookPublishRequest
+        {
+            Name = "Workbook",
+            ProjectId = "proj-1",
+            FilePath = filePath
+        }));
+
+        Assert.That(ex!.Message, Does.Contain("extension"));
+    }
+
+    [Test]
+    public void PublishAsync_WhenProjectIdMissing_ThrowsArgumentException()
+    {
+        var filePath = CreateTempFile("workbook.twbx", "workbook-content");
+
+        var ex = Assert.ThrowsAsync<ArgumentException>(() => _service.PublishAsync(new WorkbookPublishRequest
+        {
+            Name = "Workbook",
+            ProjectId = "",
+            FilePath = filePath
+        }));
+
+        Assert.That(ex!.Message, Does.Contain("Project id"));
+    }
+
     // --- DeleteAsync ---
 
     [Test]
@@ -251,4 +329,14 @@ public class WorkbookServiceTests
           }
         }
         """;
+
+    private string CreateTempFile(string fileName, string content)
+    {
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, Guid.NewGuid().ToString());
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, fileName);
+        File.WriteAllText(path, content);
+        _tempFiles.Add(path);
+        return path;
+    }
 }

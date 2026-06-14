@@ -78,25 +78,18 @@ public class DataSourceService : IDataSourceService
     public async Task<TableauDataSource> PublishAsync(DataSourcePublishRequest request, CancellationToken cancellationToken = default)
     {
         var client = _httpClientFactory.CreateClient("TableauClient");
-        using var form = new MultipartFormDataContent();
+        ArgumentNullException.ThrowIfNull(request);
 
-        form.Add(new StringContent(request.ProjectId), "projectId");
-        form.Add(new StringContent(request.Name), "datasourceName");
-        form.Add(new StringContent(request.Overwrite.ToString().ToLower()), "overwrite");
-
-        if (!string.IsNullOrEmpty(request.Description))
-        {
-            form.Add(new StringContent(request.Description), "description");
-        }
-
-        // Attach data source file
-        var fileBytes = await File.ReadAllBytesAsync(request.FilePath, cancellationToken);
-        var fileContent = new ByteArrayContent(fileBytes);
-        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
-        form.Add(fileContent, "tableau_datasource", Path.GetFileName(request.FilePath));
-
-        using var httpRequest = _requestBuilder.CreateSiteRequest(HttpMethod.Post, "datasources");
-        httpRequest.Content = form;
+        using var content = await TableauPublishContentBuilder.CreateDataSourceContentAsync(
+            request.Name,
+            request.ProjectId,
+            request.Description,
+            request.FilePath,
+            cancellationToken);
+        using var httpRequest = _requestBuilder.CreateSiteRequest(
+            HttpMethod.Post,
+            $"datasources?overwrite={request.Overwrite.ToString().ToLowerInvariant()}");
+        httpRequest.Content = content;
         var response = await client.SendAsync(httpRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
