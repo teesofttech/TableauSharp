@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using TableauSharp.Auth.Service;
 using TableauSharp.Common.Helper;
+using TableauSharp.Common.Http;
 using TableauSharp.DataSources.Services;
 using TableauSharp.Embedding.Services;
 using TableauSharp.Permissions.Services;
@@ -19,7 +20,6 @@ public static class IServiceCollectionExtensions
     {
         services.Configure<TableauOptions>(configuration.GetSection("TableauOptions"));
         services.Configure<TableauAuthOptions>(configuration.GetSection("TableauAuthOptions"));
-         
 
         services.AddHttpClient("TableauClient", (sp, client) =>
         {
@@ -27,7 +27,8 @@ public static class IServiceCollectionExtensions
             client.BaseAddress = new Uri($"{options.Server}/api/{options.Version}/");
         });
 
-        services.AddSingleton<ITableauTokenProvider, TableauTokenProvider>();
+        services.AddScoped<ITableauTokenProvider, TableauTokenProvider>();
+        services.AddScoped<ITableauRequestBuilder, TableauRequestBuilder>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IGroupService, GroupService>();

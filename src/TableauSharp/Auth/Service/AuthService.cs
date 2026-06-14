@@ -19,7 +19,7 @@ public class AuthService(IHttpClientFactory httpClientFactory,
     private readonly ITableauTokenProvider _tokenProvider = tokenProvider;
     private readonly TableauOptions _tableauOptions = tableauOptions.Value;
 
-    public async Task<AuthToken> SignInWithPATAsync()
+    public async Task<AuthToken> SignInWithPATAsync(CancellationToken cancellationToken = default)
     {
         var payload = new
         {
@@ -31,22 +31,16 @@ public class AuthService(IHttpClientFactory httpClientFactory,
             }
         };
         var client = _httpClientFactory.CreateClient("TableauClient");
-        var response = await client.PostAsync("auth/signin", GetJsonContent(payload));
+        var response = await client.PostAsync("auth/signin", GetJsonContent(payload), cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(json);
-        _tokenProvider.SetToken(doc.RootElement.GetProperty("credentials").GetProperty("token").GetString()!);
-        return new AuthToken
-        {
-            Token = doc.RootElement.GetProperty("credentials").GetProperty("token").GetString()!,
-            SiteId = doc.RootElement.GetProperty("credentials").GetProperty("site").GetProperty("id").GetString()!,
-            UserId = doc.RootElement.GetProperty("credentials").GetProperty("user").GetProperty("id").GetString()!,
-            Expiration = DateTime.UtcNow.AddHours(2)
-        };
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var authToken = ParseAuthToken(json);
+        _tokenProvider.SetToken(authToken);
+        return authToken;
     }
 
-    public async Task<AuthToken> SignInWithUserCredentialsAsync()
+    public async Task<AuthToken> SignInWithUserCredentialsAsync(CancellationToken cancellationToken = default)
     {
         var payload = new
         {
@@ -58,28 +52,23 @@ public class AuthService(IHttpClientFactory httpClientFactory,
             }
         };
         var client = _httpClientFactory.CreateClient("TableauClient");
-        var response = await client.PostAsync("auth/signin", GetJsonContent(payload));
+        var response = await client.PostAsync("auth/signin", GetJsonContent(payload), cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(json);
-
-        return new AuthToken
-        {
-            Token = doc.RootElement.GetProperty("credentials").GetProperty("token").GetString()!,
-            SiteId = doc.RootElement.GetProperty("credentials").GetProperty("site").GetProperty("id").GetString()!,
-            UserId = doc.RootElement.GetProperty("credentials").GetProperty("user").GetProperty("id").GetString()!,
-            Expiration = DateTime.UtcNow.AddMinutes(_options.Jwt_Expiry_Minutes)
-        };
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var authToken = ParseAuthToken(json);
+        _tokenProvider.SetToken(authToken);
+        return authToken;
     }
 
-    public async Task SignOutAsync(string token)
+    public async Task SignOutAsync(string token, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "auth/signout");
         request.Headers.Add("X-Tableau-Auth", token);
         var client = _httpClientFactory.CreateClient("TableauClient");
-        var response = await client.SendAsync(request);
+        var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
+        _tokenProvider.ClearToken();
     }
 
     private static StringContent GetJsonContent(object payload)
@@ -88,37 +77,63 @@ public class AuthService(IHttpClientFactory httpClientFactory,
         return new StringContent(json, Encoding.UTF8, "application/json");
     }
 
-    public async Task<AuthToken> SignInWithJWTAsync(string username, CancellationToken cancellationToken)
+    public async Task<AuthToken> SignInWithJWTAsync(string username, CancellationToken cancellationToken = default)
     {
+        string[] scopes = _options.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var payload = new
         {
             credentials = new
             {
-                jwt = CreateJwtToken(username),
-                site = new { contentUrl = _tableauOptions.Site}
+                jwt = CreateJwt(username, scopes),
+                site = new { contentUrl = GetSiteContentUrl() }
             }
         };
         var client = _httpClientFactory.CreateClient("TableauClient");
-        var response = await client.PostAsync("auth/signin", GetJsonContent(payload));
+        var response = await client.PostAsync("auth/signin", GetJsonContent(payload), cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var authToken = ParseAuthToken(json);
+        _tokenProvider.SetToken(authToken);
+        return authToken;
+    }
+
+    private AuthToken ParseAuthToken(string json)
+    {
         using var doc = JsonDocument.Parse(json);
+        var credentials = doc.RootElement.GetProperty("credentials");
+        var site = credentials.GetProperty("site");
+        var user = credentials.GetProperty("user");
 
         return new AuthToken
         {
-            Token = doc.RootElement.GetProperty("credentials").GetProperty("token").GetString()!,
-            SiteId = doc.RootElement.GetProperty("credentials").GetProperty("site").GetProperty("id").GetString()!,
-            UserId = doc.RootElement.GetProperty("credentials").GetProperty("user").GetProperty("id").GetString()!,
-            Expiration = DateTime.UtcNow.AddHours(2)
+            Token = credentials.GetProperty("token").GetString() ?? string.Empty,
+            SiteId = site.GetProperty("id").GetString() ?? string.Empty,
+            SiteContentUrl = site.TryGetProperty("contentUrl", out var contentUrl)
+                ? contentUrl.GetString()
+                : GetSiteContentUrl(),
+            UserId = user.GetProperty("id").GetString() ?? string.Empty,
+            Expiration = GetExpiration(credentials)
         };
     }
 
     private string CreateJwt(string username, string[] scopes)
     {
+        if (string.IsNullOrWhiteSpace(_options.SecretValue))
+        {
+            throw new InvalidOperationException("TableauAuthOptions.SecretValue must be configured for JWT sign-in.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.SecretId))
+        {
+            throw new InvalidOperationException("TableauAuthOptions.SecretId must be configured for JWT sign-in.");
+        }
+
         SecurityTokenDescriptor tokenDescriptor = new()
         {
-            Audience = _options.Jwt_Audience,
+            Audience = string.IsNullOrWhiteSpace(_options.Jwt_Audience)
+                ? _tableauOptions.Server
+                : _options.Jwt_Audience,
             Subject = new System.Security.Claims.ClaimsIdentity(new[]
             {
                 new System.Security.Claims.Claim("sub", username),
@@ -133,15 +148,30 @@ public class AuthService(IHttpClientFactory httpClientFactory,
         return jsonWebTokenHandler.CreateToken(tokenDescriptor);
     }
 
-    private TableauJWT CreateJwtToken(string username)
+    private DateTime GetExpiration(JsonElement credentials)
     {
-        string[] scopes = _options.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return new TableauJWT
+        if (credentials.TryGetProperty("estimatedTimeToExpiration", out var expirationElement))
         {
-            ExpiryMinutes = _options.Jwt_Expiry_Minutes,
-            Server = _tableauOptions.Server,
-            Site = _tableauOptions.Site,
-            Token = CreateJwt(username, scopes)
-        };
+            var value = expirationElement.GetString();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                var parts = value.Split(':');
+                if (parts.Length == 3
+                    && int.TryParse(parts[0], out var days)
+                    && int.TryParse(parts[1], out var hours)
+                    && int.TryParse(parts[2], out var minutes))
+                {
+                    return DateTime.UtcNow.Add(new TimeSpan(days, hours, minutes, 0));
+                }
+            }
+        }
+
+        var fallbackMinutes = _options.Jwt_Expiry_Minutes > 0 ? _options.Jwt_Expiry_Minutes : 120;
+        return DateTime.UtcNow.AddMinutes(fallbackMinutes);
     }
+
+    private string GetSiteContentUrl()
+        => !string.IsNullOrWhiteSpace(_options.SiteContentUrl)
+            ? _options.SiteContentUrl
+            : _tableauOptions.Site;
 }
